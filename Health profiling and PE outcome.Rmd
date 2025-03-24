@@ -1,0 +1,287 @@
+---
+title: "Health profiles and PE"
+author: "Qasim and Taylor"
+date: "2024-10-14"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+##Prepare the library and import the data
+
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+# Install necessary packages
+install.packages("haven")
+install.packages("tidyverse")
+install.packages("tidyLPA")
+install.packages("ggplot2")
+install.packages("psych")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("broom")
+install.packages("officer")
+install.packages("flextable")
+install.packages("ggpubr")
+install.packages("AICcmodavg")
+install.packages("rstatix")
+install.packages("car")
+install.packages("ez")
+install.packages("tinytex")
+
+```
+
+```{r warning=FALSE, message=FALSE}
+#load packages
+library(haven)
+library(tidyverse)
+library(tidyLPA)
+library(ggplot2)
+library(psych)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(officer)
+library(flextable)
+library(ggpubr)
+library(AICcmodavg)
+library(ggpubr)
+library(rstatix)
+library(ggpubr)
+library(car)
+library(ez)
+library(tinytex)
+```
+
+#load packages
+```{r}
+data <- read_sav("C:/Users/taylo/Downloads/Data_all_variables.sav")
+describe(data)
+```
+
+```{r}
+data <- data %>% 
+  mutate(
+    # Summing values for Wave 1
+    W1steps = rowSums(across(c("W1_day_1_steps":"W1_day_7_steps"))),
+    W1distance = rowSums(across(c("W1_day_1_distance":"W1_day_7_distance"))),
+    W1floors = rowSums(across(c("W1_day_1_floors":"W1_day_7_floors"))),
+    W1sedentary = rowSums(across(c("W1_day_1_minutes_sedentary":"W1_day_7_minutes_sedentary"))),
+    W1light_act = rowSums(across(c("W1_day_1_minutes_lightly_active":"W1_day_7_minutes_lightly_active"))),
+    W1fair_act = rowSums(across(c("W1_day_1_minutes_fairly_active":"W1_day_7_minutes_fairly_active"))),
+    W1very_act = rowSums(across(c("W1_day_1_minutes_very_active":"W1_day_7_minutes_very_active"))),
+    W1calories = rowSums(across(c("W1_day_1_activity_calories":"W1_day_7_activity_calories"))),
+    W1asleep_min = rowSums(across(c("W1_day_1_sleep_1_minutes_asleep":"W1_day_7_sleep_1_minutes_asleep"))),
+    # Summing values for Wave 2
+    W2steps = rowSums(across(c("W2_day_1_steps":"W2_day_7_steps"))),
+    W2distance = rowSums(across(c("W2_day_1_distance":"W2_day_7_distance"))),
+    W2floors = rowSums(across(c("W2_day_1_floors":"W2_day_7_floors"))),
+    W2sedentary = rowSums(across(c("W2_day_1_minutes_sedentary":"W2_day_7_minutes_sedentary"))),
+    W2light_act = rowSums(across(c("W2_day_1_minutes_lightly_active":"W2_day_7_minutes_lightly_active"))),
+    W2fair_act = rowSums(across(c("W2_day_1_minutes_fairly_active":"W2_day_7_minutes_fairly_active"))),
+    W2very_act = rowSums(across(c("W2_day_1_minutes_very_active":"W2_day_7_minutes_very_active"))),
+    W2calories = rowSums(across(c("W2_day_1_activity_calories":"W2_day_7_activity_calories"))),
+    W2asleep_min = rowSums(across(c("W2_day_1_sleep_1_minutes_asleep":"W2_day_7_sleep_1_minutes_asleep")))
+  ) %>%
+  # Calculate sleep average for Wave 1 and Wave 2
+  rowwise() %>%
+  mutate(
+    sleep_average_daymin_W1 = sum(c_across(contains("W1") & contains("minutes_asleep")), na.rm = TRUE) / 7,
+    sleep_average_daymin_W2 = sum(c_across(contains("W2") & contains("minutes_asleep")), na.rm = TRUE) / 7
+  ) %>%
+  ungroup()
+str(data)
+  
+
+# Check the class of the sleep average variables for both waves
+class(data$sleep_average_daymin_W1)
+class(data$sleep_average_daymin_W2)
+
+# Summarize missing values in both sleep averages
+sum(is.na(data$sleep_average_daymin_W1))
+sum(is.na(data$sleep_average_daymin_W2))
+
+# Summary statistics of sleep average for Wave 1 and Wave 2
+summary(data$sleep_average_daymin_W1)
+summary(data$sleep_average_daymin_W2)
+
+```
+##Describe the Data
+```{r}
+PE<-describe(data)
+DS<-summary(data)
+flextable(PE)
+```
+
+
+```{r}
+
+set.seed(123)
+data%>%
+  select("W1calories", "W1steps", "sleep_average_daymin_W1")%>%
+  single_imputation()%>%
+  estimate_profiles(2:5, variances = c("equal", "varying", "equal", "varying"),
+                    covariances = c("zero", "zero", "equal", "varying"))%>%
+  compare_solutions(statistics = c("AIC","BIC","AWE", "CLC", "KIC"))
+
+```
+
+## Selecting best model
+#Model 3 is Equal variances and equal covariances (CIUP) 
+```{r warning=FALSE, message=FALSE}
+## Filtering model
+set.seed(125)
+CIUP2 <- data%>%
+  select("W1calories", "W1steps", "sleep_average_daymin_W1")%>%
+  single_imputation()%>%
+  estimate_profiles(2, variances="equal",covariances="equal")
+
+set.seed(126)
+CIUP3 <- data%>%
+  select("W1calories", "W1steps", "sleep_average_daymin_W1")%>%
+  single_imputation()%>%
+  estimate_profiles(3, variances="equal",covariances="equal")
+
+set.seed(127)
+CIUP4 <- data%>%
+  select("W1calories", "W1steps", "sleep_average_daymin_W1")%>%
+  single_imputation()%>%
+  estimate_profiles(4, variances="equal",covariances="equal")
+  
+set.seed(128)
+CIUP5 <- data%>%
+  select("W1calories", "W1steps", "sleep_average_daymin_W1")%>%
+  single_imputation()%>%
+  estimate_profiles(5, variances="equal",covariances="equal")
+
+as_tibble(rbind(CIUP2[["model_3_class_2"]][["fit"]],CIUP3[["model_3_class_3"]][["fit"]],
+                CIUP4[["model_3_class_4"]][["fit"]],CIUP5[["model_3_class_5"]][["fit"]])) %>%
+  select(Model,Classes,LogLik,AIC,BIC,Entropy,n_min,BLRT_p)
+
+```
+
+## Proportion of participants in each profile
+
+```{r warning=FALSE, message=FALSE}
+## Prep data
+lpa <- get_data(CIUP3)
+summary(lpa)
+view(lpa)
+
+# Ensure the lpa class is added correctly without duplication
+lpas <- data %>%
+  mutate(Class = lpa$Class) %>%  # Add Class column from lpa
+  mutate(
+    W1calories = scale(W1calories),
+    W1steps = scale(W1steps),
+    sleep_average_daymin_W1 = scale(sleep_average_daymin_W1)
+  )
+view(lpas)
+
+lpa$Class <- as.factor(lpa$Class)
+## Proportion of participants
+lpa%>%
+  group_by(Class)%>%
+  count(Class)%>%
+  mutate(Perc = (n/452)*100)
+```
+# Raw and Std values
+
+```{r warning=FALSE, message=FALSE}
+
+## Raw Values
+
+ClassProp <- lpa %>%
+  select(Class, W1calories, W1steps, sleep_average_daymin_W1) %>%
+  group_by(Class) %>%
+  summarise(
+    W1calories = mean(W1calories),
+    W1steps = mean(W1steps),
+    sleep_average_daymin_W1 = mean(sleep_average_daymin_W1)
+  ) %>%
+  na.omit()
+as_flextable(ClassProp)
+
+# Std Values
+ClassPropsSTD <- lpa %>%
+  select(Class, W1calories, W1steps, sleep_average_daymin_W1) %>%
+  mutate(W1calories = scale(W1calories)) %>%
+  mutate(W1steps = scale(W1steps)) %>%
+  mutate(sleep_average_daymin_W1 = scale(sleep_average_daymin_W1)) %>%
+  group_by(Class) %>%
+  summarise(
+    W1calories = mean(W1calories),
+    W1steps = mean(W1steps),
+    sleep_average_daymin_W1 = mean(sleep_average_daymin_W1)) %>%
+  na.omit()
+  as_flextable(ClassPropsSTD)
+
+
+```
+#Plot profiles
+
+```{r warning=FALSE, message=FALSE}
+
+ClassPropsSTD%>%
+  select(Class, W1calories, W1steps, sleep_average_daymin_W1) %>%
+  group_by(Class) %>%
+  summarise(W1calories = mean(W1calories),
+    W1steps = mean(W1steps),
+    sleep_average_daymin_W1 = mean(sleep_average_daymin_W1)) %>%
+  na.omit() %>%
+  pivot_longer(cols=c(W1calories, W1steps, sleep_average_daymin_W1),
+    names_to="Model_Indicators",
+    values_to="Z_Scores") %>%
+  ggplot(aes(x=Model_Indicators, y=Z_Scores, group=Class, color=Class)) + 
+  geom_point(size = 1.5) + geom_line(size = 1.5) +
+  labs(x = "Model Indicators", y = "Z scores", color = "Profiles") + 
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1.0),
+        axis.title.y = element_text(face = "bold"),
+        legend.title = element_text(face = "bold"), 
+        legend.position="bottom") +
+    scale_y_continuous(breaks=seq(-2.0, 2.0, by = 0.5)) +
+    scale_x_discrete(labels = c("W1calories" = "W1calories","W1steps" = "W1steps", "sleep_average_daymin_W1" = "sleep_average_daymin_W1"))
+ 
+```
+
+```{r}
+# Ensure the 'Class' column is a factor
+lpas$Class <- as.factor(lpas$Class)
+
+# Conduct the ANOVA
+anova_results <- aov(PEQ1_total ~ Class, data = lpas)
+
+# Summary of the ANOVA results
+summary(anova_results)
+```
+
+```{r}
+# Tukey's HSD post-hoc test
+tukey_results <- TukeyHSD(anova_results)
+
+# View the results
+print(tukey_results)
+```
+
+```{r}
+# Conduct the ANOVA
+anova_results_Dep <- aov(Dep1_total ~ Class, data = lpas)
+
+# Summary of the ANOVA results
+summary(anova_results_Dep)
+```
+
+```{r}
+# Tukey's HSD post-hoc test
+tukey_results <- TukeyHSD(anova_results_Dep)
+
+# View the results
+print(tukey_results)
+```
+
+
+```{r}
+write_sav(data, "Qasim.sav")
+```
+
